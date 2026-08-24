@@ -1,27 +1,24 @@
 -- ====================================================
--- FALTAO HUB — SYSTÈME DE CLÉ QUOTIDIENNE AUTOMATIQUE
+-- FALTAO HUB — SCRIPT ROBLOX COMPLET AVEC CLÉ DU JOUR
 -- ====================================================
 
-local HttpService = game:GetService("HttpService")
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
--- TON LIEN LINKVERTISE
+-- TON LIEN LINKVERTISE FIXE
 local LinkvertiseURL = "https://link-center.net/7819524/2IXzAq35ia7o"
 
--- Fonction magique pour générer une clé unique et complexe qui change chaque jour
+-- Fonction pour calculer automatiquement la même clé que le bot Discord
 local function getDailyKey()
-    local date = os.date("!*t") -- Récupère l'heure UTC universelle
+    local date = os.date("!*t")
     local rawString = string.format("FaltaoSecretKey_%d_%d_%d", date.year, date.month, date.day)
     
-    -- On transforme ça en code crypté/mélangé (hash simple)
     local hash = 0
     for i = 1, #rawString do
         hash = (hash * 31 + string.byte(rawString, i)) % 100000000
     end
     
-    -- Résultat : un code propre avec des chiffres et lettres mélangés qui change chaque jour
     return string.format("FALTAO-%08X", hash)
 end
 
@@ -31,7 +28,7 @@ local correctKey = getDailyKey()
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "FaltaoKeySystem"
 ScreenGui.Parent = CoreGui
--- Protection anti-fermeture par le jeu
+
 if syn and syn.protect_gui then
     syn.protect_gui(ScreenGui)
 elseif protectgui then
@@ -65,14 +62,14 @@ local TitleCorner = Instance.new("UICorner")
 TitleCorner.CornerRadius = UDim.new(0, 8)
 TitleCorner.Parent = Title
 
--- Bouton pour obtenir le lien Linkvertise
+-- Bouton pour copier le lien Linkvertise
 local GetKeyBtn = Instance.new("TextButton")
 GetKeyBtn.Parent = MainFrame
 GetKeyBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
 GetKeyBtn.Position = UDim2.new(0.05, 0, 0.30, 0)
 GetKeyBtn.Size = UDim2.new(0.9, 0, 0, 35)
 GetKeyBtn.Font = Enum.Font.SourceSansBold
-GetKeyBtn.Text = "🔗 Obtenir le lien de la clé (Linkvertise)"
+GetKeyBtn.Text = "🔗 Copier le lien Linkvertise"
 GetKeyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 GetKeyBtn.TextSize = 14
 
@@ -87,7 +84,7 @@ TextBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 TextBox.Position = UDim2.new(0.05, 0, 0.52, 0)
 TextBox.Size = UDim2.new(0.9, 0, 0, 35)
 TextBox.Font = Enum.Font.SourceSans
-TextBox.PlaceholderText = "Colle ta clé ici..."
+TextBox.PlaceholderText = "Colle la clé du Discord ici..."
 TextBox.Text = ""
 TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 TextBox.TextSize = 14
@@ -98,7 +95,7 @@ BoxCorner.Parent = TextBox
 
 -- Bouton de validation
 local SubmitBtn = Instance.new("TextButton")
-SubmitBtn.Parent = MainFrame
+SubmitBtn.Parent = MainBranch or MainFrame
 SubmitBtn.BackgroundColor3 = Color3.fromRGB(52, 152, 219)
 SubmitBtn.Position = UDim2.new(0.05, 0, 0.74, 0)
 SubmitBtn.Size = UDim2.new(0.9, 0, 0, 40)
@@ -111,31 +108,31 @@ local BtnCorner2 = Instance.new("UICorner")
 BtnCorner2.CornerRadius = UDim.new(0, 6)
 BtnCorner2.Parent = SubmitBtn
 
--- Action du bouton : Copier le lien Linkvertise
+-- Action : Copier le lien Linkvertise
 GetKeyBtn.MouseButton1Click:Connect(function()
     pcall(function()
         setclipboard(LinkvertiseURL)
     end)
     GetKeyBtn.Text = "✅ Lien copié dans le presse-papier !"
     task.wait(2)
-    GetKeyBtn.Text = "🔗 Obtenir le lien de la clé (Linkvertise)"
+    GetKeyBtn.Text = "🔗 Copier le lien Linkvertise"
 end)
 
--- Action du bouton : Vérifier la clé
+-- Action : Vérifier la clé entrée
 SubmitBtn.MouseButton1Click:Connect(function()
     if TextBox.Text == correctKey then
         ScreenGui:Destroy()
         
-        -- ====================================================
-        -- TON SCRIPT PRINCIPAL / HUB SE LANCE ICI
-        -- ====================================================
         print("Clé valide ! Lancement du Faltao Hub...")
         
+        -- ====================================================
+        -- TON INTERFACE / HUB PRINCIPAL SE LANCE ICI
+        -- ====================================================
         local HubGui = Instance.new("ScreenGui")
         HubGui.Parent = CoreGui
         
         local MainHub = Instance.new("Frame")
-        MainHub.Parent = HubHub or HubGui
+        MainHub.Parent = HubGui
         MainHub.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
         MainHub.Position = UDim2.new(0.5, -200, 0.5, -150)
         MainHub.Size = UDim2.new(0, 400, 0, 300)
