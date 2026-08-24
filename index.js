@@ -24,8 +24,8 @@ const TOKEN = process.env.TOKEN;
 // TON LIEN LINKVERTISE FIXE
 const LINKVERTISE_URL = 'https://link-center.net/7819524/2IXzAq35ia7o';
 
-// ID de ton rôle "Accès Clé" sur Discord (mets l'ID exact de ton rôle ici)
-const KEY_ROLE_ID = 'MET_TON_ID_DE_ROLE_ICI';
+// ID de ton rôle "Accès Clé"
+const KEY_ROLE_ID = '1541487216444833792';
 
 // Fonction pour calculer la clé quotidienne
 function getDailyKey() {
@@ -57,18 +57,17 @@ function scheduleMidnightReset() {
 
     setTimeout(async () => {
         await resetAllRoles();
-        // Relance le timer pour le jour d'après
         scheduleMidnightReset();
     }, timeToMidnight);
 }
 
-// Fonction pour retirer le rôle à tous les membres du serveur
+// Fonction pour retirer le rôle à tous les membres du serveur à minuit
 async function resetAllRoles() {
     try {
-        const guild = client.guilds.cache.first(); // Récupère ton serveur
+        const guild = client.guilds.cache.first();
         if (!guild) return;
         
-        await guild.members.fetch(); // Charge tous les membres en cache
+        await guild.members.fetch();
         const role = guild.roles.cache.get(KEY_ROLE_ID);
         if (!role) return;
 
@@ -85,7 +84,7 @@ async function resetAllRoles() {
 client.on('ready', () => {
     console.log(`Bot connecté en tant que ${client.user.tag}`);
     client.user.setActivity('Faltao Hub | !setup', { type: 3 });
-    scheduleMidnightReset(); // Lance le compte à rebours pour minuit
+    scheduleMidnightReset();
 });
 
 client.on('messageCreate', async (message) => {
@@ -146,9 +145,10 @@ client.on('interactionCreate', async (interaction) => {
             });
         }
 
-        const todaysKey = getDailyKey();
+        const todaysKey = getDayKey(); // ou getDailyKey()
+        const todaysKeyFixed = getDailyKey();
         await interaction.reply({
-            content: `🔑 **Voici ta clé du jour :** \`${todaysKey}\`\n*Bon jeu sur Faltao Hub !*`,
+            content: `🔑 **Voici ta clé du jour :** \`${todaysKeyFixed}\`\n*Bon jeu sur Faltao Hub !*`,
             flags: MessageFlags.Ephemeral
         });
     }
