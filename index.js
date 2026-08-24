@@ -1,17 +1,17 @@
-const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, REST, Routes, MessageFlags } = require('discord.js');
+const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } = require('discord.js');
 const fs = require('fs');
 const express = require('express');
-const fetch = require('node-fetch'); // Assure-toi de l'installer si besoin ou utilise fetch natif de Node 18+
+const fetch = require('node-fetch');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Configuration (Mets ton vrai CLIENT_ID, CLIENT_SECRET et le lien de ton app Render)
-const CLIENT_ID = process.env.CLIENT_ID || 'TON_CLIENT_ID_DISCORD';
-const CLIENT_SECRET = process.env.CLIENT_SECRET || 'TON_CLIENT_SECRET_DISCORD';
-const REDIRECT_URI = process.env.REDIRECT_URI || 'https://faltaobot.onrender.com/auth/discord/callback';
-const GUILD_ID = process.env.GUILD_ID || 'TON_SERVER_ID';
-const ROLE_ID = process.env.ROLE_ID || 'ID_DU_ROLE_ACCES_H24';
+// Configuration récupérée depuis tes variables d'environnement Render
+const CLIENT_ID = process.env.CLIENT_ID;
+const CLIENT_SECRET = process.env.CLIENT_SECRET;
+const REDIRECT_URI = process.env.REDIRECT_URI; // https://proculpa-sys.github.io/faltao-key/
+const GUILD_ID = process.env.GUILD_ID;
+const ROLE_ID = process.env.ROLE_ID;
 
 const DB_FILE = './database.json';
 
@@ -26,24 +26,25 @@ function saveDatabase(data) {
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
 }
 
-// --- PARTIE SERVEUR WEB (Où l'utilisateur arrive après Linkvertise & OAuth2) ---
-app.get('/', (req, res) => {
-    res.send('<h1>Faltao Hub Key System</h1><p>Veuillez passer par Linkvertise et le bot Discord pour obtenir votre clé.</p>');
-});
-
-// Étape de redirection vers Discord OAuth2
-app.get('/auth/discord', (req, res) => {
-    const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=identify%20guilds.join`;
-    res.redirect(discordAuthUrl);
-});
-
-// Callback après autorisation de l'application par l'utilisateur
-app.get('/auth/discord/callback', async (req, res) => {
+// --- PARTIE SERVEUR WEB (Reçoit le code de Discord, donne le rôle et génère la clé) ---
+app.get('/', async (req, res) => {
     const code = req.query.code;
-    if (!code) return res.send('❌ Erreur : Code d\'autorisation manquant.');
+    
+    // Si l'utilisateur arrive sur la page sans code (première visite ou après Linkvertise)
+    if (!code) {
+        return res.send(`
+            <html>
+            <head><title>Faltao Hub - Clé HWID</title></head>
+            <body style="background: #111; color: white; font-family: sans-serif; text-align: center; padding-top: 50px;">
+                <h1>⚡ Faltao Hub — Générateur de Clé</h1>
+                <p>Tu dois passer par le bot Discord et Linkvertise pour récupérer ta clé !</p>
+            </body>
+            </html>
+        `);
+    }
 
     try {
-        // 1. Échanger le code contre un Token Discord
+        // 1. Échanger le code contre un Token Discord OAuth2
         const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
             method: 'POST',
             body: new URLSearchParams({
@@ -57,23 +58,23 @@ app.get('/auth/discord/callback', async (req, res) => {
         });
 
         const tokenData = await tokenResponse.json();
-        if (!tokenData.access_token) return res.send('❌ Erreur lors de la récupération du token Discord.');
+        if (!tokenData.access_token) {
+            return res.send('❌ Erreur : Impossible de récupérer le token Discord. Réessaie depuis le bot.');
+        }
 
-        // 2. Récupérer les infos de l'utilisateur
+        // 2. Récupérer l'ID de l'utilisateur connecté
         const userResponse = await fetch('https://discord.com/api/users/@me', {
             headers: { Authorization: `Bearer ${tokenData.access_token}` },
         });
         const userData = await userResponse.json();
         const userId = userData.id;
 
-        // 3. Ajouter l'utilisateur sur le serveur et lui donner le rôle d'accès
-        await fetch(`https://discord.com/api/guilds/${GUILD_ID}/members/${userId}`, {
+        // 3. Ajouter automatiquement le rôle "Accès H24" sur ton serveur Discord
+        await fetch(`https://discord.com/api/guilds/${GUILD_ID}/members/${userId}/roles/${ROLE_ID}`, {
             method: 'PUT',
             headers: {
                 Authorization: `Bot ${process.env.TOKEN}`,
-                'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ access_token: tokenData.access_token, roles: [ROLE_ID] }),
         });
 
         // 4. Générer la clé unique valable 24h
@@ -82,22 +83,22 @@ app.get('/auth/discord/callback', async (req, res) => {
         db.keys[userId] = { key: uniqueKey, expires: Date.now() + (24 * 60 * 60 * 1000) };
         saveDatabase(db);
 
-        // 5. Afficher la clé à l'utilisateur sur la page web
+        // 5. Afficher la clé finale à l'utilisateur sur la page web
         res.send(`
             <html>
             <head><title>Faltao Hub - Clé Validée</title></head>
             <body style="background: #111; color: white; font-family: sans-serif; text-align: center; padding-top: 50px;">
-                <h1>✅ Accès autorisé avec succès !</h1>
+                <h1 style="color: #43B581;">✅ Accès autorisé avec succès !</h1>
                 <p>Ton rôle <b>Accès H24</b> a été ajouté sur le serveur Discord.</p>
                 <p>Voici ta clé unique pour le script (valable 24h) :</p>
-                <input type="text" value="${uniqueKey}" readonly style="padding: 10px; width: 300px; text-align: center; font-size: 16px; background: #222; color: #5865F2; border: 1px solid #5865F2; border-radius: 5px;" />
-                <p style="margin-top: 20px; color: gray;">Tu peux fermer cette page et retourner sur Discord.</p>
+                <input type="text" value="${uniqueKey}" readonly style="padding: 12px; width: 350px; text-align: center; font-size: 16px; background: #222; color: #5865F2; border: 2px solid #5865F2; border-radius: 5px; font-weight: bold;" />
+                <p style="margin-top: 20px; color: gray;">Copie ta clé, ferme cette page et retourne sur Discord !</p>
             </body>
             </html>
         `);
     } catch (error) {
         console.error(error);
-        res.send('❌ Une erreur interne est survenue lors de la validation.');
+        res.send('❌ Une erreur est survenue lors de la validation sur le serveur.');
     }
 });
 
@@ -112,7 +113,7 @@ client.once('ready', () => {
     console.log(`Bot connecté en tant que ${client.user.tag} !`);
 });
 
-// Commande !setup pour envoyer le panneau
+// Commande !setup pour envoyer le panneau de génération
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
@@ -121,17 +122,20 @@ client.on('messageCreate', async message => {
             .setTitle("⚡ Faltao Hub — Système de Clé HWID & Accès H24")
             .setDescription("Pour obtenir ton script et ta clé d'accès (24h) :\n\n" +
                 "1️⃣ Clique sur **Lien Linkvertise** pour passer les pubs.\n" +
-                "2️⃣ Connecte-toi via l'application pour recevoir ton rôle **Accès H24**.\n" +
-                "3️⃣ Récupère ta clé unique affichée sur le site !\n" +
+                "2️⃣ Connecte-toi et autorise l'app pour recevoir ton rôle **Accès H24**.\n" +
+                "3️⃣ Récupère ta clé unique affichée sur la page !\n" +
                 "4️⃣ Clique sur **Obtenir le script HWID** pour l'exécuter en jeu.")
             .setColor(0x5865F2);
+
+        // Remplace 'TON_LIEN_LINKVERTISE_ICI' par ton vrai lien Linkvertise qui redirige vers ton URL OAuth2 Discord
+        const oauthUrl = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=identify%20guilds.join`;
 
         const row = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
                     .setLabel('🔗 Lien Linkvertise / Obtenir la Clé')
                     .setStyle(ButtonStyle.Link)
-                    .setURL('https://faltaobot.onrender.com/auth/discord'), // Redirige vers le site d'authentification
+                    .setURL(oauthUrl), 
                 new ButtonBuilder()
                     .setCustomId('get_hwid_script')
                     .setLabel('📋 Obtenir le script HWID')
@@ -142,13 +146,13 @@ client.on('messageCreate', async message => {
     }
 });
 
-// Donner le script en jeu
+// Donner le script en jeu quand on clique sur le bouton
 client.on('interactionCreate', async interaction => {
     if (!interaction.isButton()) return;
 
     if (interaction.customId === 'get_hwid_script') {
         await interaction.reply({ 
-            content: "📋 **Voici le script pour ton exécuteur :**\n```lua\n-- Script Faltao Hub\nprint('Script chargé avec succès !')\n```", 
+            content: "📋 **Voici le script pour ton exécuteur :**\n```lua\n-- Script Faltao Hub HWID\nprint('Script chargé avec succès !')\n```", 
             flags: MessageFlags.Ephemeral 
         });
     }
