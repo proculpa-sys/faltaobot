@@ -3,7 +3,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 
-const TOKEN = 'MET_TON_TOKEN_DISCORD_ICI'; // Mets ton vrai token de bot ici
+const TOKEN = process.env.TOKEN;
 
 const app = express();
 const PORT = process.env.PORT || 3000;
