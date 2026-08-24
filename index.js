@@ -20,8 +20,8 @@ const client = new Client({
 
 const TOKEN = process.env.TOKEN;
 
-// Ton lien officiel Platoboost (ID 30317)
-const PLATOBOOST_KEY_LINK = 'https://platoboost.com/getkey?id=30317';
+// Lien Platoboost mis à jour en .app (ID 30317)
+const PLATOBOOST_KEY_LINK = 'https://platoboost.app/getkey?id=30317';
 
 client.on('ready', () => {
     console.log(`Bot connecté en tant que ${client.user.tag}`);
@@ -31,13 +31,11 @@ client.on('ready', () => {
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
-    // Commande !setup (Réservée aux administrateurs)
     if (message.content === '!setup') {
         if (!message.member.permissions.has('Administrator')) {
             return message.reply({ content: "❌ Tu n'as pas les permissions nécessaires pour utiliser cette commande.", flags: MessageFlags.Ephemeral });
         }
 
-        // Supprime le message de commande pour garder le salon propre
         await message.delete().catch(() => {});
 
         const embed = new EmbedBuilder()
