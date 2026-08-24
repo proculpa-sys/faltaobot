@@ -1,14 +1,11 @@
 const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } = require('discord.js');
 const http = require('http');
 
-// Serveur HTTP pour garder le bot éveillé sur Render
 const PORT = process.env.PORT || 10000;
 http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('FaltaoBot est en ligne et opérationnel !');
-}).listen(PORT, () => {
-    console.log(`Serveur Web actif sur le port ${PORT}`);
-});
+    res.end('FaltaoBot est en ligne !');
+}).listen(PORT);
 
 const client = new Client({
     intents: [
@@ -20,14 +17,10 @@ const client = new Client({
 });
 
 const TOKEN = process.env.TOKEN;
-
-// TON LIEN LINKVERTISE FIXE
 const LINKVERTISE_URL = 'https://link-center.net/7819524/2IXzAq35ia7o';
-
-// ID de ton rôle "Accès Clé"
 const KEY_ROLE_ID = '1541487216444833792';
 
-// Fonction pour calculer la clé du jour
+// Fonction de calcul de la clé du jour synchronisée
 function getDailyKey() {
     const now = new Date();
     const year = now.getUTCFullYear();
@@ -42,45 +35,35 @@ function getDailyKey() {
     return `faltao_${hash.toString(16).toLowerCase().padStart(8, '0')}`;
 }
 
-// Planifie le reset à minuit UTC pour retirer le rôle à tout le monde
+// Reset des rôles à minuit UTC
 function scheduleMidnightReset() {
     const now = new Date();
-    const night = new Date(
-        now.getUTCFullYear(),
-        now.getUTCMonth(),
-        now.getUTCDate() + 1,
-        0, 0, 0
-    );
-    const timeToMidnight = night.getTime() - now.getTime();
-
+    const night = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0);
     setTimeout(async () => {
         await resetAllRoles();
         scheduleMidnightReset();
-    }, timeToMidnight);
+    }, night.getTime() - now.getTime());
 }
 
 async function resetAllRoles() {
     try {
         const guild = client.guilds.cache.first();
         if (!guild) return;
-        
         await guild.members.fetch();
         const role = guild.roles.cache.get(KEY_ROLE_ID);
         if (!role) return;
 
-        console.log("Minuit atteint : Retrait automatique du rôle d'accès pour tout le monde...");
         for (const member of role.members.values()) {
             await member.roles.remove(role).catch(() => {});
         }
-        console.log("Reset des rôles terminé !");
+        console.log("Rôles d'accès réinitialisés à minuit !");
     } catch (error) {
-        console.error("Erreur lors du reset des rôles :", error);
+        console.error(error);
     }
 }
 
 client.on('ready', () => {
-    console.log(`Bot connecté en tant que ${client.user.tag}`);
-    client.user.setActivity('Faltao Hub | !setup', { type: 3 });
+    console.log(`Bot connecté : ${client.user.tag}`);
     scheduleMidnightReset();
 });
 
@@ -88,35 +71,18 @@ client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
     if (message.content === '!setup') {
-        if (!message.member.permissions.has('Administrator')) {
-            return message.reply({ content: "❌ Tu n'as pas les permissions nécessaires.", flags: MessageFlags.Ephemeral });
-        }
-
+        if (!message.member.permissions.has('Administrator')) return;
         await message.delete().catch(() => {});
 
         const embed = new EmbedBuilder()
             .setTitle('⚡ Faltao Hub — Key System')
-            .setDescription('Bienvenue sur le système de clé de **Faltao Hub**.\n\n**Comment ça marche ?**\n1️⃣ Clique sur **Lien Linkvertise** pour passer les pubs et récupérer ta clé sur le site.\n2️⃣ Demande à un admin (ou configure un bot de vérification) de t\'attribuer ton rôle d\'accès si tu veux utiliser le bouton Discord.\n3️⃣ Récupère ton script directement ici !')
-            .setColor(0x9B59B6)
-            .setFooter({ text: 'Faltao Hub • Sécurité anti-bypass' })
-            .setTimestamp();
+            .setDescription('**Comment obtenir ta clé du jour ?**\n\n1️⃣ Clique sur **Lien Linkvertise** pour passer les pubs.\n2️⃣ Connecte-toi avec ton Discord sur la page web finale.\n3️⃣ Reviens ici et clique sur **Clé du Jour** pour récupérer ta clé !')
+            .setColor(0x9B59B6);
 
         const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('get_link')
-                .setLabel('Lien Linkvertise / Clé')
-                .setStyle(ButtonStyle.Success)
-                .setEmoji('🔗'),
-            new ButtonBuilder()
-                .setCustomId('get_key')
-                .setLabel('Clé du Jour (Discord)')
-                .setStyle(ButtonStyle.Secondary)
-                .setEmoji('🔑'),
-            new ButtonBuilder()
-                .setCustomId('get_script')
-                .setLabel('Obtenir le Script')
-                .setStyle(ButtonStyle.Primary)
-                .setEmoji('📜')
+            new ButtonBuilder().setCustomId('get_link').setLabel('Lien Linkvertise').setStyle(ButtonStyle.Success).setEmoji('🔗'),
+            new ButtonBuilder().setCustomId('get_key').setLabel('Clé du Jour').setStyle(ButtonStyle.Secondary).setEmoji('🔑'),
+            new ButtonBuilder().setCustomId('get_script').setLabel('Obtenir le Script').setStyle(ButtonStyle.Primary).setEmoji('📜')
         );
 
         await message.channel.send({ embeds: [embed], components: [row] });
@@ -128,7 +94,7 @@ client.on('interactionCreate', async (interaction) => {
 
     if (interaction.customId === 'get_link') {
         await interaction.reply({
-            content: `🔗 **Passe par ce lien Linkvertise pour accéder à ta clé du jour :**\n${LINKVERTISE_URL}`,
+            content: `🔗 **Passe par ce lien Linkvertise :**\n${LINKVERTISE_URL}`,
             flags: MessageFlags.Ephemeral
         });
     }
@@ -136,7 +102,7 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.customId === 'get_key') {
         if (!interaction.member.roles.cache.has(KEY_ROLE_ID)) {
             return interaction.reply({
-                content: `❌ **Accès refusé !** Tu n'as pas le rôle requis pour obtenir la clé par le bot.\n👉 Passe par le **Lien Linkvertise** pour récupérer ta clé directement sur le site web.`,
+                content: `❌ **Accès refusé !** Tu n'as pas validé ton passage sur le lien Linkvertise.`,
                 flags: MessageFlags.Ephemeral
             });
         }
@@ -151,7 +117,7 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.customId === 'get_script') {
         const scriptCode = `loadstring(game:HttpGet("https://raw.githubusercontent.com/proculpa-sys/faltaobot/refs/heads/main/script.lua"))()`;
         await interaction.reply({
-            content: `📜 **Voici le script complet à coller dans ton exécuteur :**\n\`\`\`lua\n${scriptCode}\n\`\`\``,
+            content: `📜 **Voici le script :**\n\`\`\`lua\n${scriptCode}\n\`\`\``,
             flags: MessageFlags.Ephemeral
         });
     }
