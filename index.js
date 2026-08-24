@@ -76,13 +76,14 @@ client.on('messageCreate', async (message) => {
 
         const embed = new EmbedBuilder()
             .setTitle('⚡ Faltao Hub — Key System')
-            .setDescription('**Comment obtenir ta clé du jour ?**\n\n1️⃣ Clique sur **Lien Linkvertise** pour passer les pubs.\n2️⃣ Connecte-toi avec ton Discord sur la page web finale.\n3️⃣ Reviens ici et clique sur **Clé du Jour** pour récupérer ta clé !')
+            .setDescription('**Comment obtenir ta clé du jour ?**\n\n1️⃣ Clique sur **Lien Linkvertise** pour passer les pubs.\n2️⃣ Sur la page finale, clique sur le bouton pour valider ton accès.\n3️⃣ Reviens ici et clique sur **Clé du Jour** pour récupérer ta clé !')
             .setColor(0x9B59B6);
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('get_link').setLabel('Lien Linkvertise').setStyle(ButtonStyle.Success).setEmoji('🔗'),
+            new ButtonBuilder().setCustomId('verify_access').setLabel('Valider mon Accès').setStyle(ButtonStyle.Primary).setEmoji('✅'),
             new ButtonBuilder().setCustomId('get_key').setLabel('Clé du Jour').setStyle(ButtonStyle.Secondary).setEmoji('🔑'),
-            new ButtonBuilder().setCustomId('get_script').setLabel('Obtenir le Script').setStyle(ButtonStyle.Primary).setEmoji('📜')
+            new ButtonBuilder().setCustomId('get_script').setLabel('Obtenir le Script').setStyle(ButtonStyle.Danger).setEmoji('📜')
         );
 
         await message.channel.send({ embeds: [embed], components: [row] });
@@ -99,10 +100,27 @@ client.on('interactionCreate', async (interaction) => {
         });
     }
 
+    // NOUVEAU BOUTON DE VALIDATION DIRECTE
+    if (interaction.customId === 'verify_access') {
+        const role = interaction.guild.roles.cache.get(KEY_ROLE_ID);
+        if (role) {
+            await interaction.member.roles.add(role).catch(() => {});
+            await interaction.reply({
+                content: `✅ **Accès validé !** Le rôle t'a été attribué avec succès. Tu peux maintenant cliquer sur **Clé du Jour** !`,
+                flags: MessageFlags.Ephemeral
+            });
+        } else {
+            await interaction.reply({
+                content: `❌ Erreur de configuration du rôle sur le serveur.`,
+                flags: MessageFlags.Ephemeral
+            });
+        }
+    }
+
     if (interaction.customId === 'get_key') {
         if (!interaction.member.roles.cache.has(KEY_ROLE_ID)) {
             return interaction.reply({
-                content: `❌ **Accès refusé !** Tu n'as pas validé ton passage sur le lien Linkvertise.`,
+                content: `❌ **Accès refusé !** Clique d'abord sur **Valider mon Accès** après avoir fait ton Linkvertise.`,
                 flags: MessageFlags.Ephemeral
             });
         }
