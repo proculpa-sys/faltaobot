@@ -1,5 +1,4 @@
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } = require('discord.js');
-const fetch = require('node-fetch'); // Assure-toi que node-fetch est installé, ou utilise fetch natif selon ta version de Node
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
@@ -35,7 +34,7 @@ client.on('interactionCreate', async interaction => {
         const newKey = "FALTAO-" + Math.random().toString(36).substring(2, 10).toUpperCase();
 
         try {
-            // 1. Récupérer le contenu actuel de keys.txt et son SHA sur GitHub
+            // 1. Récupérer le contenu actuel de keys.txt et son SHA sur GitHub (avec fetch natif)
             const getRes = await fetch(`https://api.github.com/repos/${REPO}/contents/keys.txt`, {
                 headers: {
                     'Authorization': `token ${GITHUB_TOKEN}`,
@@ -68,7 +67,7 @@ client.on('interactionCreate', async interaction => {
                 })
             });
 
-            await interaction.editReply(`Voici ta clé unique : \`${newKey}\` (Elle a été enregistrée pour ton accès Roblox !`);
+            await interaction.editReply(`Voici ta clé unique : \`${newKey}\` (Elle a été enregistrée pour ton accès Roblox !)`);
         } catch (error) {
             console.error(error);
             await interaction.editReply("Erreur lors de la génération de la clé. Réessaie plus tard.");
