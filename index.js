@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } = require('discord.js');
+const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags } = require('discord.js');
 const http = require('http');
 
 // Serveur HTTP pour Render
@@ -18,25 +18,18 @@ const client = new Client({
     ]
 });
 
+// CONFIGURATION
 const TOKEN = process.env.TOKEN;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const REPO_OWNER = 'proculpa-sys';
 const REPO_NAME = 'faltaobot';
 const FILE_PATH = 'keys.txt';
 
-function generateKey() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let p1 = '', p2 = '';
-    for (let i = 0; i < 4; i++) p1 += chars.charAt(Math.floor(Math.random() * chars.length));
-    for (let i = 0; i < 4; i++) p2 += chars.charAt(Math.floor(Math.random() * chars.length));
-    return `FALTAO-${p1}-${p2}`;
-}
+// Colle ton lien Linkvertise ici
+const LINKVERTISE_URL = 'https://linkvertise.com/ton-lien-ici';
 
 async function addKeyToGithub(key) {
-    if (!GITHUB_TOKEN) {
-        console.error("GITHUB_TOKEN est manquant dans les variables Render !");
-        return false;
-    }
+    if (!GITHUB_TOKEN) return false;
 
     const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
     const headers = {
@@ -63,7 +56,7 @@ async function addKeyToGithub(key) {
             method: 'PUT',
             headers,
             body: JSON.stringify({
-                message: `Ajout de la clé ${key}`,
+                message: `Activation de la clé ${key}`,
                 content: encodedContent,
                 sha: sha || undefined
             })
@@ -80,6 +73,7 @@ client.on('ready', () => {
     console.log(`Bot connecté en tant que ${client.user.tag}`);
 });
 
+// Commande !setup pour envoyer le panneau principal
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
@@ -89,15 +83,20 @@ client.on('messageCreate', async (message) => {
         await message.delete().catch(() => {});
 
         const embed = new EmbedBuilder()
-            .setTitle('Faltao Hub — Control Panel')
-            .setDescription('Clique sur les boutons ci-dessous pour générer ta clé d\'accès ou récupérer le script Roblox.')
+            .setTitle('Faltao Hub — Key System')
+            .setDescription('Suis les étapes ci-dessous pour activer ton accès 24h :\n\n1️⃣ Clique sur **Obtenir le lien** et passe les étapes Linkvertise.\n2️⃣ Copie la clé reçue et clique sur **Valider ma clé**.\n3️⃣ Récupère ensuite ton script !')
             .setColor(0x9B59B6)
-            .setFooter({ text: 'Faltao Hub • Système de Clé Automatique' });
+            .setFooter({ text: 'Faltao Hub • Système de Clé 24h' });
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-                .setCustomId('get_key_btn')
-                .setLabel('Obtenir une Clé')
+                .setCustomId('get_link_btn')
+                .setLabel('Obtenir le lien (Linkvertise)')
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('🔗'),
+            new ButtonBuilder()
+                .setCustomId('redeem_key_btn')
+                .setLabel('Valider ma clé')
                 .setStyle(ButtonStyle.Success)
                 .setEmoji('🔑'),
             new ButtonBuilder()
@@ -111,38 +110,60 @@ client.on('messageCreate', async (message) => {
     }
 });
 
+// Gestion des interactions (Boutons + Modals)
 client.on('interactionCreate', async (interaction) => {
-    if (!interaction.isButton()) return;
+    // 1. GESTION DES BOUTONS
+    if (interaction.isButton()) {
+        if (interaction.customId === 'get_link_btn') {
+            await interaction.reply({
+                content: `Voici ton lien pour récupérer ta clé (valable 24h) :\n${LINKVERTISE_URL}`,
+                flags: MessageFlags.Ephemeral
+            });
+        }
 
-    try {
-        if (interaction.customId === 'get_key_btn') {
-            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        if (interaction.customId === 'redeem_key_btn') {
+            // Ouverture de la fenêtre pop-up pour saisir la clé
+            const modal = new ModalBuilder()
+                .setCustomId('key_modal')
+                .setTitle('Validation de votre clé');
 
-            const key = generateKey();
-            const success = await addKeyToGithub(key);
+            const keyInput = new TextInputBuilder()
+                .setCustomId('user_key_input')
+                .setLabel('Entrez votre clé d\'accès :')
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder('Ex: FALTAO-XXXX-XXXX')
+                .setRequired(true);
 
-            if (success) {
-                await interaction.editReply({
-                    content: `Voici ta clé d'accès unique : \`${key}\`\n\nCopie-colle la dans le menu du script sur Roblox !`
-                });
-            } else {
-                await interaction.editReply({
-                    content: '⚠️ Impossible d\'ajouter la clé sur GitHub. Vérifie que la variable `GITHUB_TOKEN` est bien configurée sur Render.'
-                });
-            }
+            const actionRow = new ActionRowBuilder().addComponents(keyInput);
+            modal.addComponents(actionRow);
+
+            await interaction.showModal(modal);
         }
 
         if (interaction.customId === 'get_script_btn') {
             const scriptCode = `loadstring(game:HttpGet("https://raw.githubusercontent.com/proculpa-sys/faltaobot/refs/heads/main/script.lua"))()`;
             await interaction.reply({
-                content: `Voici le script à exécuter dans ton exécuteur Roblox :\n\`\`\`lua\n${scriptCode}\n\`\`\``,
+                content: `Voici le script Roblox :\n\`\`\`lua\n${scriptCode}\n\`\`\``,
                 flags: MessageFlags.Ephemeral
             });
         }
-    } catch (error) {
-        console.error('Erreur bouton :', error);
-        if (interaction.deferred || interaction.replied) {
-            await interaction.editReply({ content: 'Une erreur est survenue lors du traitement.' }).catch(() => {});
+    }
+
+    // 2. GESTION DU FORMULAIRE POP-UP (MODAL)
+    if (interaction.isModalSubmit() && interaction.customId === 'key_modal') {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+        const enteredKey = interaction.fields.getTextInputValue('user_key_input').trim();
+        const success = await addKeyToGithub(enteredKey);
+
+        if (success) {
+            await interaction.editReply({
+                content: `✅ La clé \`${enteredKey}\` a été validée avec succès ! Tu peux maintenant l'utiliser dans Roblox.`
+            });
+        } else {
+            await interaction.editReply({
+                content: '⚠️ Erreur lors de l\'enregistrement de la clé. Réessaie ou vérifie ta configuration.'
+            });
         }
     }
 });
