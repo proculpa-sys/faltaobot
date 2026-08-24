@@ -20,8 +20,8 @@ const client = new Client({
 
 const TOKEN = process.env.TOKEN;
 
-// Lien Platoboost mis à jour en .app (ID 30317)
-const PLATOBOOST_KEY_LINK = 'https://platoboost.app/getkey?id=30317';
+// Ton vrai lien Linkvertise
+const LINKVERTISE_KEY_LINK = 'https://link-center.net/7819524/2IXzAq35ia7o';
 
 client.on('ready', () => {
     console.log(`Bot connecté en tant que ${client.user.tag}`);
@@ -40,9 +40,9 @@ client.on('messageCreate', async (message) => {
 
         const embed = new EmbedBuilder()
             .setTitle('⚡ Faltao Hub — Control Panel')
-            .setDescription('Bienvenue sur le panneau de contrôle officiel de **Faltao Hub**.\n\nChoisis une option ci-dessous :\n• **Obtenir une Clé (24h)** : Valide ton accès gratuit.\n• **Obtenir le Script** : Copie le loadstring à lancer dans ton exécuteur.')
+            .setDescription('Bienvenue sur le panneau de contrôle officiel de **Faltao Hub**.\n\nChoisis une option ci-dessous :\n• **Obtenir une Clé (24h)** : Valide ton accès gratuit via Linkvertise.\n• **Obtenir le Script** : Copie le loadstring à lancer dans ton exécuteur.')
             .setColor(0x9B59B6)
-            .setFooter({ text: 'Faltao Hub • Système de clé sécurisé HWID' })
+            .setFooter({ text: 'Faltao Hub • Système de clé sécurisé' })
             .setTimestamp();
 
         const row = new ActionRowBuilder().addComponents(
@@ -67,7 +67,7 @@ client.on('interactionCreate', async (interaction) => {
 
     if (interaction.customId === 'get_key_link') {
         await interaction.reply({
-            content: `🔑 **Voici ton lien unique pour obtenir ta clé d'accès (valable 24h) :**\n${PLATOBOOST_KEY_LINK}\n\n*Une fois les étapes validées sur le site web, ton jeu se débloquera automatiquement !*`,
+            content: `🔑 **Voici ton lien unique pour obtenir ta clé d'accès (valable 24h) :**\n${LINKVERTISE_KEY_LINK}\n\n*Passe les étapes sur le lien pour récupérer ta clé !*`,
             flags: MessageFlags.Ephemeral
         });
     }
