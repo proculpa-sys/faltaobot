@@ -26,18 +26,18 @@ client.on('ready', () => {
     console.log(`Bot connecté en tant que ${client.user.tag} !`);
 });
 
-// Commande !setup pour envoyer le panneau complet avec tous les boutons
+// Commande !setup pour envoyer le panneau complet
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
     if (message.content === '!setup') {
         const embed = new EmbedBuilder()
             .setTitle("⚡ Faltao Hub — Système de Clé HWID")
-            .setDescription("Comment obtenir et gérer ta clé unique (liée à ton PC) ?\n\n" +
+            .setDescription("Comment obtenir ta clé unique ?\n\n" +
                 "1️⃣ **Lien Linkvertise** pour passer les pubs.\n" +
-                "2️⃣ **Générer ma Clé HWID** pour enregistrer ton code unique.\n" +
-                "3️⃣ **Voir mon HWID** pour vérifier ton appareil actuel.\n" +
-                "4️⃣ **Reset HWID** pour changer de PC (disponible toutes les 24h).")
+                "2️⃣ Clique sur **Obtenir le script HWID** et exécute-le en jeu pour copier ton code.\n" +
+                "3️⃣ Clique sur **Générer ma Clé HWID** et colle ton code !\n" +
+                "4️⃣ Ton accès sera actif pour **24 heures**.")
             .setColor(0x5865F2);
 
         const row1 = new ActionRowBuilder()
@@ -47,25 +47,25 @@ client.on('messageCreate', async message => {
                     .setStyle(ButtonStyle.Link)
                     .setURL('https://link-center.net/7819524/2IXzAq35ia7o'),
                 new ButtonBuilder()
-                    .setCustomId('gen_hwid_modal')
-                    .setLabel('Générer ma Clé HWID')
-                    .setStyle(ButtonStyle.Primary),
+                    .setCustomId('get_hwid_script')
+                    .setLabel('📋 Obtenir le script HWID')
+                    .setStyle(ButtonStyle.Secondary),
                 new ButtonBuilder()
-                    .setCustomId('get_my_hwid')
-                    .setLabel('🔍 Voir mon HWID')
-                    .setStyle(ButtonStyle.Secondary)
+                    .setCustomId('gen_hwid_modal')
+                    .setLabel('🔑 Générer ma Clé HWID')
+                    .setStyle(ButtonStyle.Primary)
             );
 
         const row2 = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
+                    .setCustomId('get_my_hwid')
+                    .setLabel('🔍 Voir mon HWID')
+                    .setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder()
                     .setCustomId('reset_hwid')
                     .setLabel('🔄 Reset HWID (24h)')
-                    .setStyle(ButtonStyle.Danger),
-                new ButtonBuilder()
-                    .setCustomId('get_script')
-                    .setLabel('📜 Obtenir le Script')
-                    .setStyle(ButtonStyle.Secondary)
+                    .setStyle(ButtonStyle.Danger)
             );
 
         await message.channel.send({ embeds: [embed], components: [row1, row2] });
@@ -78,14 +78,23 @@ client.on('interactionCreate', async interaction => {
         const userId = interaction.user.id;
         const db = loadDatabase();
 
-        if (interaction.customId === 'gen_hwid_modal') {
+        // 1. Donne le script Lua qui copie l'HWID en jeu
+        if (interaction.customId === 'get_hwid_script') {
+            await interaction.reply({ 
+                content: "📋 **Voici le script pour copier ton HWID en jeu :**\n*Exécute ce code dans ton exécuteur Roblox, ton HWID sera automatiquement copié dans ton presse-papier !*\n```lua\n-- Script de récupération HWID pour Faltao Hub\nlocal hwid = gethwid() or syn and syn.request and 'Synapse_HWID' or identifyexecutor and identifyexecutor() or 'Inconnu'\nsetclipboard(tostring(hwid))\nhold('HWID copié dans le presse-papier !')\nprint('Ton HWID : ' .. tostring(hwid))\n```", 
+                ephemeral: true 
+            });
+        }
+
+        // 2. Ouvre le formulaire pour coller l'HWID
+        else if (interaction.customId === 'gen_hwid_modal') {
             const modal = new ModalBuilder()
                 .setCustomId('hwid_modal_submit')
                 .setTitle('Génération de Clé HWID');
 
             const hwidInput = new TextInputBuilder()
                 .setCustomId('hwid_input')
-                .setLabel('Colle ton vrai HWID :')
+                .setLabel('Colle ton HWID ici :')
                 .setStyle(TextInputStyle.Short)
                 .setPlaceholder('Ex: HWID-XXXX-YYYY-ZZZZ')
                 .setRequired(true);
@@ -94,21 +103,17 @@ client.on('interactionCreate', async interaction => {
             await interaction.showModal(modal);
         } 
         
+        // 3. Voir son HWID enregistré
         else if (interaction.customId === 'get_my_hwid') {
             const currentHwid = db.hwids[userId];
             if (!currentHwid) {
-                await interaction.reply({ 
-                    content: "❌ Tu n'as aucun HWID enregistré. Clique sur **Générer ma Clé HWID** pour l'ajouter.", 
-                    ephemeral: true 
-                });
+                await interaction.reply({ content: "❌ Tu n'as aucun HWID enregistré. Clique sur **Générer ma Clé HWID** pour l'ajouter.", ephemeral: true });
             } else {
-                await interaction.reply({ 
-                    content: `🔍 Ton HWID enregistré actuellement est :\n\`${currentHwid}\``, 
-                    ephemeral: true 
-                });
+                await interaction.reply({ content: `🔍 Ton HWID enregistré actuellement est :\n\`${currentHwid}\``, ephemeral: true });
             }
         }
 
+        // 4. Reset HWID (24h)
         else if (interaction.customId === 'reset_hwid') {
             const now = Date.now();
             const COOLDOWN_TIME = 24 * 60 * 60 * 1000; // 24 heures
@@ -116,73 +121,50 @@ client.on('interactionCreate', async interaction => {
 
             if (now - lastReset < COOLDOWN_TIME) {
                 const remainingTime = Math.ceil((COOLDOWN_TIME - (now - lastReset)) / (1000 * 60 * 60));
-                await interaction.reply({ 
-                    content: `❌ Tu dois encore patienter environ **${remainingTime} heure(s)** avant de pouvoir demander un nouveau reset HWID.`, 
-                    ephemeral: true 
-                });
+                await interaction.reply({ content: `❌ Tu dois encore patienter environ **${remainingTime} heure(s)** avant un nouveau reset HWID.`, ephemeral: true });
             } else {
                 db.cooldowns[userId] = now;
-                // Supprime l'association HWID de l'utilisateur
-                for (let id in db.hwids) {
-                    if (id === userId) {
-                        delete db.hwids[id];
-                    }
-                }
+                if (db.hwids[userId]) delete db.hwids[userId];
                 saveDatabase(db);
 
-                await interaction.reply({ 
-                    content: "✅ Ton HWID a été réinitialisé avec succès ! Tu peux désormais enregistrer un nouvel appareil.", 
-                    ephemeral: true 
-                });
+                await interaction.reply({ content: "✅ Ton HWID a été réinitialisé avec succès ! Tu peux enregistrer un nouvel appareil.", ephemeral: true });
             }
-        }
-        
-        else if (interaction.customId === 'get_script') {
-            await interaction.reply({ 
-                content: "📜 Voici ton script Lua :\n```lua\n-- Code de ton script Faltao Hub\nprint('Script chargé avec succès !')\n```", 
-                ephemeral: true 
-            });
         }
     } 
     
+    // Soumission du formulaire (Modal)
     else if (interaction.isModalSubmit()) {
         if (interaction.customId === 'hwid_modal_submit') {
             const hwid = interaction.fields.getTextInputValue('hwid_input').trim();
             const userId = interaction.user.id;
             
-            // SÉCURITÉ 1 : Longueur minimale pour éviter les mots au hasard comme "salyut"
-            if (hwid.length < 10) {
-                return await interaction.reply({ 
-                    content: "❌ **HWID invalide !** Ton HWID est trop court. Assure-toi de copier le vrai code de ton exécuteur.", 
-                    ephemeral: true 
-                });
+            // Sécurité : taille minimale
+            if (hwid.length < 5) {
+                return await interaction.reply({ content: "❌ **HWID invalide !** Ce code est trop court.", ephemeral: true });
             }
 
             const db = loadDatabase();
 
-            // SÉCURITÉ 2 : Vérifier si cet HWID est DÉJÀ utilisé par un autre compte Discord
+            // Sécurité : Anti-partage (1 HWID = 1 compte Discord max)
             for (let [storedUserId, storedHwid] of Object.entries(db.hwids)) {
                 if (storedHwid === hwid && storedUserId !== userId) {
-                    return await interaction.reply({ 
-                        content: "❌ **Erreur :** Cet HWID est déjà enregistré sur un **autre compte Discord** ! Tu ne peux pas utiliser le HWID de quelqu'un d'autre.", 
-                        ephemeral: true 
-                    });
+                    return await interaction.reply({ content: "❌ **Erreur :** Cet HWID est déjà lié à un **autre compte Discord** !", ephemeral: true });
                 }
             }
 
-            // Enregistrement si tout est bon
+            // Enregistrement
             db.hwids[userId] = hwid;
             saveDatabase(db);
 
-            // Génération de la clé unique liée
+            // Génération de la clé unique
             const uniqueKey = `faltao_${userId}_${Math.random().toString(36).substring(2, 10)}`;
 
             await interaction.reply({ 
-                content: `✅ **Clé générée avec succès !**\n\n🔑 **Ta clé unique :** \`${uniqueKey}\`\n💻 **HWID associé :** \`${hwid}\`\n⏳ **Validité :** 24 heures.\n\n*Garde-la précieusement, elle ne fonctionne que sur ton PC et ton compte !*`, 
+                content: `✅ **Clé générée avec succès !**\n\n🔑 **Ta clé unique :** \`${uniqueKey}\`\n💻 **HWID associé :** \`${hwid}\`\n⏳ **Validité :** 24 heures.\n\n*Garde-la précieusement !*`, 
                 ephemeral: true 
             });
         }
     }
 });
 
-client.login(process.env.DISCORD_TOKEN);
+client.login(process.env.TOKEN);
