@@ -25,8 +25,8 @@ const REPO_OWNER = 'proculpa-sys';
 const REPO_NAME = 'faltaobot';
 const FILE_PATH = 'keys.txt';
 
-// Colle ton lien Linkvertise ici
-const LINKVERTISE_URL = 'https://linkvertise.com/ton-lien-ici';
+// Ton lien adlink
+const LINKVERTISE_URL = 'https://link-center.net/7819524/2IXzAq35ia7o';
 
 async function addKeyToGithub(key) {
     if (!GITHUB_TOKEN) return false;
@@ -84,14 +84,14 @@ client.on('messageCreate', async (message) => {
 
         const embed = new EmbedBuilder()
             .setTitle('Faltao Hub — Key System')
-            .setDescription('Suis les étapes ci-dessous pour activer ton accès 24h :\n\n1️⃣ Clique sur **Obtenir le lien** et passe les étapes Linkvertise.\n2️⃣ Copie la clé reçue et clique sur **Valider ma clé**.\n3️⃣ Récupère ensuite ton script !')
+            .setDescription('Suis les étapes ci-dessous pour activer ton accès :\n\n1️⃣ Clique sur **Obtenir le lien** et passe les étapes.\n2️⃣ Copie la clé reçue et clique sur **Valider ma clé**.\n3️⃣ Récupère ensuite ton script !')
             .setColor(0x9B59B6)
-            .setFooter({ text: 'Faltao Hub • Système de Clé 24h' });
+            .setFooter({ text: 'Faltao Hub • Système de Clé' });
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId('get_link_btn')
-                .setLabel('Obtenir le lien (Linkvertise)')
+                .setLabel('Obtenir le lien (Clé)')
                 .setStyle(ButtonStyle.Secondary)
                 .setEmoji('🔗'),
             new ButtonBuilder()
@@ -116,13 +116,12 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.isButton()) {
         if (interaction.customId === 'get_link_btn') {
             await interaction.reply({
-                content: `Voici ton lien pour récupérer ta clé (valable 24h) :\n${LINKVERTISE_URL}`,
+                content: `Voici ton lien pour récupérer ta clé :\n${LINKVERTISE_URL}`,
                 flags: MessageFlags.Ephemeral
             });
         }
 
         if (interaction.customId === 'redeem_key_btn') {
-            // Ouverture de la fenêtre pop-up pour saisir la clé
             const modal = new ModalBuilder()
                 .setCustomId('key_modal')
                 .setTitle('Validation de votre clé');
