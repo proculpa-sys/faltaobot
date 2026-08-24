@@ -1,15 +1,15 @@
 -- ====================================================
--- FALTAO HUB — SCRIPT ROBLOX COMPLET AVEC CLÉ DU JOUR
+-- FALTAO HUB — SCRIPT ROBLOX SYNCHRONISÉ AVEC LE SITE
 -- ====================================================
 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
--- TON LIEN LINKVERTISE FIXE
+-- TON LIEN LINKVERTISE (qui mène vers ton site web)
 local LinkvertiseURL = "https://link-center.net/7819524/2IXzAq35ia7o"
 
--- Fonction pour calculer automatiquement la même clé que le bot Discord
+-- Fonction identique à celle de ton site web pour calculer la clé du jour
 local function getDailyKey()
     local date = os.date("!*t")
     local rawString = string.format("FaltaoSecretKey_%d_%d_%d", date.year, date.month, date.day)
@@ -19,7 +19,8 @@ local function getDailyKey()
         hash = (hash * 31 + string.byte(rawString, i)) % 100000000
     end
     
-    return string.format("FALTAO-%08X", hash)
+    -- Format en minuscules pour matcher exactement avec ton site web
+    return string.format("faltao_%08x", hash)
 end
 
 local correctKey = getDailyKey()
@@ -84,7 +85,7 @@ TextBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 TextBox.Position = UDim2.new(0.05, 0, 0.52, 0)
 TextBox.Size = UDim2.new(0.9, 0, 0, 35)
 TextBox.Font = Enum.Font.SourceSans
-TextBox.PlaceholderText = "Colle la clé du Discord ici..."
+TextBox.PlaceholderText = "Colle la clé du site ici..."
 TextBox.Text = ""
 TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 TextBox.TextSize = 14
@@ -95,7 +96,7 @@ BoxCorner.Parent = TextBox
 
 -- Bouton de validation
 local SubmitBtn = Instance.new("TextButton")
-SubmitBtn.Parent = MainBranch or MainFrame
+SubmitBtn.Parent = MainFrame
 SubmitBtn.BackgroundColor3 = Color3.fromRGB(52, 152, 219)
 SubmitBtn.Position = UDim2.new(0.05, 0, 0.74, 0)
 SubmitBtn.Size = UDim2.new(0.9, 0, 0, 40)
