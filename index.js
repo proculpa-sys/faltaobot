@@ -1,4 +1,14 @@
-const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } = require('discord.js');
+const http = require('http');
+
+// Serveur HTTP pour Render
+const PORT = process.env.PORT || 10000;
+http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('FaltaoBot est en ligne !');
+}).listen(PORT, () => {
+    console.log(`Serveur Web actif sur le port ${PORT}`);
+});
 
 const client = new Client({
     intents: [
@@ -14,7 +24,6 @@ const REPO_OWNER = 'proculpa-sys';
 const REPO_NAME = 'faltaobot';
 const FILE_PATH = 'keys.txt';
 
-// Génère une clé unique au format FALTAO-XXXX-XXXX
 function generateKey() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let p1 = '', p2 = '';
@@ -23,8 +32,12 @@ function generateKey() {
     return `FALTAO-${p1}-${p2}`;
 }
 
-// Ajoute la clé dans keys.txt via l'API GitHub
 async function addKeyToGithub(key) {
+    if (!GITHUB_TOKEN) {
+        console.error("GITHUB_TOKEN est manquant dans les variables Render !");
+        return false;
+    }
+
     const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
     const headers = {
         'Authorization': `Bearer ${GITHUB_TOKEN}`,
@@ -58,7 +71,7 @@ async function addKeyToGithub(key) {
 
         return putRes.ok;
     } catch (err) {
-        console.error(err);
+        console.error('Erreur GitHub API :', err);
         return false;
     }
 }
@@ -67,7 +80,6 @@ client.on('ready', () => {
     console.log(`Bot connecté en tant que ${client.user.tag}`);
 });
 
-// Commande !setup pour envoyer le panneau à boutons
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
@@ -99,35 +111,39 @@ client.on('messageCreate', async (message) => {
     }
 });
 
-// Gestion des clics sur les boutons
 client.on('interactionCreate', async (interaction) => {
     if (!interaction.isButton()) return;
 
-    if (interaction.customId === 'get_key_btn') {
-        await interaction.deferReply({ ephemeral: true });
+    try {
+        if (interaction.customId === 'get_key_btn') {
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-        const key = generateKey();
-        const success = await addKeyToGithub(key);
+            const key = generateKey();
+            const success = await addKeyToGithub(key);
 
-        if (success) {
-            await interaction.followup({
-                content: `Voici ta clé d'accès unique : \`${key}\`\n\nCopie-colle la dans le menu du script sur Roblox !`,
-                ephemeral: true
-            });
-        } else {
-            await interaction.followup({
-                content: 'Erreur lors de l\'ajout de la clé sur GitHub. Vérifie tes variables sur Render.',
-                ephemeral: true
+            if (success) {
+                await interaction.editReply({
+                    content: `Voici ta clé d'accès unique : \`${key}\`\n\nCopie-colle la dans le menu du script sur Roblox !`
+                });
+            } else {
+                await interaction.editReply({
+                    content: '⚠️ Impossible d\'ajouter la clé sur GitHub. Vérifie que la variable `GITHUB_TOKEN` est bien configurée sur Render.'
+                });
+            }
+        }
+
+        if (interaction.customId === 'get_script_btn') {
+            const scriptCode = `loadstring(game:HttpGet("https://raw.githubusercontent.com/proculpa-sys/faltaobot/refs/heads/main/script.lua"))()`;
+            await interaction.reply({
+                content: `Voici le script à exécuter dans ton exécuteur Roblox :\n\`\`\`lua\n${scriptCode}\n\`\`\``,
+                flags: MessageFlags.Ephemeral
             });
         }
-    }
-
-    if (interaction.customId === 'get_script_btn') {
-        const scriptCode = `loadstring(game:HttpGet("https://raw.githubusercontent.com/proculpa-sys/faltaobot/refs/heads/main/script.lua"))()`;
-        await interaction.reply({
-            content: `Voici le script à exécuter dans ton exécuteur Roblox :\n\`\`\`lua\n${scriptCode}\n\`\`\``,
-            ephemeral: true
-        });
+    } catch (error) {
+        console.error('Erreur bouton :', error);
+        if (interaction.deferred || interaction.replied) {
+            await interaction.editReply({ content: 'Une erreur est survenue lors du traitement.' }).catch(() => {});
+        }
     }
 });
 
