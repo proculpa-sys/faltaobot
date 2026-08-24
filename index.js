@@ -27,7 +27,7 @@ client.on('ready', () => {
     console.log(`Bot connecté en tant que ${client.user.tag} !`);
 });
 
-// Commande simple pour envoyer le panneau de gestion (ex: !panel)
+// Commande pour envoyer le panneau de gestion (tape !panel sur ton Discord)
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
@@ -79,7 +79,6 @@ client.on('interactionCreate', async interaction => {
                 ephemeral: true 
             });
         } else {
-            // Mise à jour du cooldown et suppression de l'ancien HWID
             db.cooldowns[userId] = now;
             if (db.hwids[userId]) {
                 delete db.hwids[userId];
@@ -94,5 +93,5 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-// Remplace par le token de ton bot Discord
-client.login('TON_TOKEN_DISCORD_ICI');
+// Connexion sécurisée via les variables d'environnement de Render
+client.login(process.env.DISCORD_TOKEN);
