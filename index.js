@@ -1,11 +1,11 @@
-const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags } = require('discord.js');
+const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } = require('discord.js');
 const http = require('http');
 
-// Serveur HTTP pour Render
+// Serveur HTTP léger pour garder le bot éveillé sur Render
 const PORT = process.env.PORT || 10000;
 http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('FaltaoBot est en ligne !');
+    res.end('FaltaoBot est en ligne et opérationnel !');
 }).listen(PORT, () => {
     console.log(`Serveur Web actif sur le port ${PORT}`);
 });
@@ -18,89 +18,44 @@ const client = new Client({
     ]
 });
 
-// CONFIGURATION
 const TOKEN = process.env.TOKEN;
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-const REPO_OWNER = 'proculpa-sys';
-const REPO_NAME = 'faltaobot';
-const FILE_PATH = 'keys.txt';
 
-// Ton lien adlink
-const LINKVERTISE_URL = 'https://link-center.net/7819524/2IXzAq35ia7o';
-
-async function addKeyToGithub(key) {
-    if (!GITHUB_TOKEN) return false;
-
-    const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
-    const headers = {
-        'Authorization': `Bearer ${GITHUB_TOKEN}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'FaltaoBot'
-    };
-
-    try {
-        const res = await fetch(url, { headers });
-        let sha = null;
-        let currentContent = '';
-
-        if (res.ok) {
-            const data = await res.json();
-            sha = data.sha;
-            currentContent = Buffer.from(data.content, 'base64').toString('utf-8');
-        }
-
-        const newContent = currentContent.trim() + '\n' + key + '\n';
-        const encodedContent = Buffer.from(newContent, 'utf-8').toString('base64');
-
-        const putRes = await fetch(url, {
-            method: 'PUT',
-            headers,
-            body: JSON.stringify({
-                message: `Activation de la clé ${key}`,
-                content: encodedContent,
-                sha: sha || undefined
-            })
-        });
-
-        return putRes.ok;
-    } catch (err) {
-        console.error('Erreur GitHub API :', err);
-        return false;
-    }
-}
+// Ton lien officiel Platoboost (ID 30317)
+const PLATOBOOST_KEY_LINK = 'https://platoboost.com/getkey?id=30317';
 
 client.on('ready', () => {
     console.log(`Bot connecté en tant que ${client.user.tag}`);
+    client.user.setActivity('Faltao Hub | !setup', { type: 3 }); // Statut "Regarde Faltao Hub"
 });
 
-// Commande !setup pour envoyer le panneau principal
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
+    // Commande !setup (Réservée aux administrateurs)
     if (message.content === '!setup') {
-        if (!message.member.permissions.has('Administrator')) return;
+        if (!message.member.permissions.has('Administrator')) {
+            return message.reply({ content: "❌ Tu n'as pas les permissions nécessaires pour utiliser cette commande.", flags: MessageFlags.Ephemeral });
+        }
 
+        // Supprime le message de commande pour garder le salon propre
         await message.delete().catch(() => {});
 
         const embed = new EmbedBuilder()
-            .setTitle('Faltao Hub — Key System')
-            .setDescription('Suis les étapes ci-dessous pour activer ton accès :\n\n1️⃣ Clique sur **Obtenir le lien** et passe les étapes.\n2️⃣ Copie la clé reçue et clique sur **Valider ma clé**.\n3️⃣ Récupère ensuite ton script !')
+            .setTitle('⚡ Faltao Hub — Control Panel')
+            .setDescription('Bienvenue sur le panneau de contrôle officiel de **Faltao Hub**.\n\nChoisissez une option ci-dessous :\n• **Obtenir une Clé (24h)** : Valide ton accès gratuit via Linkvertise.\n• **Obtenir le Script** : Copie le loadstring à lancer dans ton exécuteur.')
             .setColor(0x9B59B6)
-            .setFooter({ text: 'Faltao Hub • Système de Clé' });
+            .setThumbnail('https://i.imgur.com/8381223.png') // Optionnel : remplace par l'URL de ton logo si tu veux
+            .setFooter({ text: 'Faltao Hub • Système de clé sécurisé HWID' })
+            .setTimestamp();
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-                .setCustomId('get_link_btn')
-                .setLabel('Obtenir le lien (Clé)')
-                .setStyle(ButtonStyle.Secondary)
-                .setEmoji('🔗'),
-            new ButtonBuilder()
-                .setCustomId('redeem_key_btn')
-                .setLabel('Valider ma clé')
+                .setCustomId('get_key_link')
+                .setLabel('Obtenir une Clé (24h)')
                 .setStyle(ButtonStyle.Success)
                 .setEmoji('🔑'),
             new ButtonBuilder()
-                .setCustomId('get_script_btn')
+                .setCustomId('get_script')
                 .setLabel('Obtenir le Script')
                 .setStyle(ButtonStyle.Primary)
                 .setEmoji('📜')
@@ -110,60 +65,23 @@ client.on('messageCreate', async (message) => {
     }
 });
 
-// Gestion des interactions (Boutons + Modals)
 client.on('interactionCreate', async (interaction) => {
-    // 1. GESTION DES BOUTONS
-    if (interaction.isButton()) {
-        if (interaction.customId === 'get_link_btn') {
-            await interaction.reply({
-                content: `Voici ton lien pour récupérer ta clé :\n${LINKVERTISE_URL}`,
-                flags: MessageFlags.Ephemeral
-            });
-        }
+    if (!interaction.isButton()) return;
 
-        if (interaction.customId === 'redeem_key_btn') {
-            const modal = new ModalBuilder()
-                .setCustomId('key_modal')
-                .setTitle('Validation de votre clé');
-
-            const keyInput = new TextInputBuilder()
-                .setCustomId('user_key_input')
-                .setLabel('Entrez votre clé d\'accès :')
-                .setStyle(TextInputStyle.Short)
-                .setPlaceholder('Ex: FALTAO-XXXX-XXXX')
-                .setRequired(true);
-
-            const actionRow = new ActionRowBuilder().addComponents(keyInput);
-            modal.addComponents(actionRow);
-
-            await interaction.showModal(modal);
-        }
-
-        if (interaction.customId === 'get_script_btn') {
-            const scriptCode = `loadstring(game:HttpGet("https://raw.githubusercontent.com/proculpa-sys/faltaobot/refs/heads/main/script.lua"))()`;
-            await interaction.reply({
-                content: `Voici le script Roblox :\n\`\`\`lua\n${scriptCode}\n\`\`\``,
-                flags: MessageFlags.Ephemeral
-            });
-        }
+    if (interaction.customId === 'get_key_link') {
+        await interaction.reply({
+            content: `🔑 **Voici ton lien unique pour obtenir ta clé d'accès (valable 24h) :**\n${PLATOBOOST_KEY_LINK}\n\n*Une fois les étapes validées sur le site web, ton jeu se débloquera automatiquement !*`,
+            flags: MessageFlags.Ephemeral
+        });
     }
 
-    // 2. GESTION DU FORMULAIRE POP-UP (MODAL)
-    if (interaction.isModalSubmit() && interaction.customId === 'key_modal') {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-        const enteredKey = interaction.fields.getTextInputValue('user_key_input').trim();
-        const success = await addKeyToGithub(enteredKey);
-
-        if (success) {
-            await interaction.editReply({
-                content: `✅ La clé \`${enteredKey}\` a été validée avec succès ! Tu peux maintenant l'utiliser dans Roblox.`
-            });
-        } else {
-            await interaction.editReply({
-                content: '⚠️ Erreur lors de l\'enregistrement de la clé. Réessaie ou vérifie ta configuration.'
-            });
-        }
+    if (interaction.customId === 'get_script') {
+        // Remplace l'URL raw GitHub par la tienne si ton dépôt n'est pas "proculpa-sys/faltaobot"
+        const scriptCode = `loadstring(game:HttpGet("https://raw.githubusercontent.com/proculpa-sys/faltaobot/refs/heads/main/script.lua"))()`;
+        await interaction.reply({
+            content: `📜 **Voici le script complet à coller dans ton exécuteur :**\n\`\`\`lua\n${scriptCode}\n\`\`\``,
+            flags: MessageFlags.Ephemeral
+        });
     }
 });
 
