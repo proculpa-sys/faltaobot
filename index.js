@@ -25,7 +25,7 @@ const PLATOBOOST_KEY_LINK = 'https://platoboost.com/getkey?id=30317';
 
 client.on('ready', () => {
     console.log(`Bot connecté en tant que ${client.user.tag}`);
-    client.user.setActivity('Faltao Hub | !setup', { type: 3 }); // Statut "Regarde Faltao Hub"
+    client.user.setActivity('Faltao Hub | !setup', { type: 3 });
 });
 
 client.on('messageCreate', async (message) => {
@@ -42,9 +42,8 @@ client.on('messageCreate', async (message) => {
 
         const embed = new EmbedBuilder()
             .setTitle('⚡ Faltao Hub — Control Panel')
-            .setDescription('Bienvenue sur le panneau de contrôle officiel de **Faltao Hub**.\n\nChoisissez une option ci-dessous :\n• **Obtenir une Clé (24h)** : Valide ton accès gratuit via Linkvertise.\n• **Obtenir le Script** : Copie le loadstring à lancer dans ton exécuteur.')
+            .setDescription('Bienvenue sur le panneau de contrôle officiel de **Faltao Hub**.\n\nChoisis une option ci-dessous :\n• **Obtenir une Clé (24h)** : Valide ton accès gratuit.\n• **Obtenir le Script** : Copie le loadstring à lancer dans ton exécuteur.')
             .setColor(0x9B59B6)
-            .setThumbnail('https://i.imgur.com/8381223.png') // Optionnel : remplace par l'URL de ton logo si tu veux
             .setFooter({ text: 'Faltao Hub • Système de clé sécurisé HWID' })
             .setTimestamp();
 
@@ -76,7 +75,6 @@ client.on('interactionCreate', async (interaction) => {
     }
 
     if (interaction.customId === 'get_script') {
-        // Remplace l'URL raw GitHub par la tienne si ton dépôt n'est pas "proculpa-sys/faltaobot"
         const scriptCode = `loadstring(game:HttpGet("https://raw.githubusercontent.com/proculpa-sys/faltaobot/refs/heads/main/script.lua"))()`;
         await interaction.reply({
             content: `📜 **Voici le script complet à coller dans ton exécuteur :**\n\`\`\`lua\n${scriptCode}\n\`\`\``,
