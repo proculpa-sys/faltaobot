@@ -1,7 +1,6 @@
 const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } = require('discord.js');
 const fs = require('fs');
 const express = require('express');
-const fetch = require('node-fetch');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -26,11 +25,10 @@ function saveDatabase(data) {
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
 }
 
-// --- PARTIE SERVEUR WEB (Reçoit le code de Discord, donne le rôle et génère la clé) ---
+// --- PARTIE SERVEUR WEB ---
 app.get('/', async (req, res) => {
     const code = req.query.code;
     
-    // Si l'utilisateur arrive sur la page sans code (première visite ou après Linkvertise)
     if (!code) {
         return res.send(`
             <html>
@@ -69,7 +67,7 @@ app.get('/', async (req, res) => {
         const userData = await userResponse.json();
         const userId = userData.id;
 
-        // 3. Ajouter automatiquement le rôle "Accès H24" sur ton serveur Discord
+        // 3. Ajouter automatiquement le rôle sur ton serveur Discord
         await fetch(`https://discord.com/api/guilds/${GUILD_ID}/members/${userId}/roles/${ROLE_ID}`, {
             method: 'PUT',
             headers: {
@@ -83,7 +81,7 @@ app.get('/', async (req, res) => {
         db.keys[userId] = { key: uniqueKey, expires: Date.now() + (24 * 60 * 60 * 1000) };
         saveDatabase(db);
 
-        // 5. Afficher la clé finale à l'utilisateur sur la page web
+        // 5. Afficher la clé finale à l'utilisateur
         res.send(`
             <html>
             <head><title>Faltao Hub - Clé Validée</title></head>
@@ -109,11 +107,10 @@ const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
 
-client.once('ready', () => {
+client.once('clientReady', () => {
     console.log(`Bot connecté en tant que ${client.user.tag} !`);
 });
 
-// Commande !setup pour envoyer le panneau de génération
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
@@ -127,7 +124,6 @@ client.on('messageCreate', async message => {
                 "4️⃣ Clique sur **Obtenir le script HWID** pour l'exécuter en jeu.")
             .setColor(0x5865F2);
 
-        // Remplace 'TON_LIEN_LINKVERTISE_ICI' par ton vrai lien Linkvertise qui redirige vers ton URL OAuth2 Discord
         const oauthUrl = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=identify%20guilds.join`;
 
         const row = new ActionRowBuilder()
@@ -146,7 +142,6 @@ client.on('messageCreate', async message => {
     }
 });
 
-// Donner le script en jeu quand on clique sur le bouton
 client.on('interactionCreate', async interaction => {
     if (!interaction.isButton()) return;
 
