@@ -20,8 +20,25 @@ const client = new Client({
 
 const TOKEN = process.env.TOKEN;
 
-// Ton vrai lien Linkvertise
-const LINKVERTISE_KEY_LINK = 'https://link-center.net/7819524/2IXzAq35ia7o';
+// Ton vrai lien Linkvertise fixe
+const LINKVERTISE_URL = 'https://link-center.net/7819524/2IXzAq35ia7o';
+
+// Fonction pour générer exactement la même clé quotidienne que le script Roblox
+function getDailyKey() {
+    const now = new Date();
+    const year = now.getUTCFullYear();
+    const month = now.getUTCMonth() + 1;
+    const day = now.getUTCDate();
+    
+    const rawString = `FaltaoSecretKey_${year}_${month}_${day}`;
+    
+    let hash = 0;
+    for (let i = 0; i < rawString.length; i++) {
+        hash = (hash * 31 + rawString.charCodeAt(i)) % 100000000;
+    }
+    
+    return `FALTAO-${hash.toString(16).toUpperCase().padStart(8, '0')}`;
+}
 
 client.on('ready', () => {
     console.log(`Bot connecté en tant que ${client.user.tag}`);
@@ -33,23 +50,28 @@ client.on('messageCreate', async (message) => {
 
     if (message.content === '!setup') {
         if (!message.member.permissions.has('Administrator')) {
-            return message.reply({ content: "❌ Tu n'as pas les permissions nécessaires pour utiliser cette commande.", flags: MessageFlags.Ephemeral });
+            return message.reply({ content: "❌ Tu n'as pas les permissions nécessaires.", flags: MessageFlags.Ephemeral });
         }
 
         await message.delete().catch(() => {});
 
         const embed = new EmbedBuilder()
             .setTitle('⚡ Faltao Hub — Control Panel')
-            .setDescription('Bienvenue sur le panneau de contrôle officiel de **Faltao Hub**.\n\nChoisis une option ci-dessous :\n• **Obtenir une Clé (24h)** : Valide ton accès gratuit via Linkvertise.\n• **Obtenir le Script** : Copie le loadstring à lancer dans ton exécuteur.')
+            .setDescription('Bienvenue sur le panneau de contrôle officiel de **Faltao Hub**.\n\nChoisis une option ci-dessous :\n• **Obtenir le Lien Linkvertise** : Ouvre la page pour passer les étapes.\n• **Obtenir la Clé du Jour** : Affiche la clé valide (générée automatiquement).\n• **Obtenir le Script** : Récupère le loadstring à lancer.')
             .setColor(0x9B59B6)
-            .setFooter({ text: 'Faltao Hub • Système de clé sécurisé' })
+            .setFooter({ text: 'Faltao Hub • Clé quotidienne automatique' })
             .setTimestamp();
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-                .setCustomId('get_key_link')
-                .setLabel('Obtenir une Clé (24h)')
+                .setCustomId('get_link')
+                .setLabel('Lien Linkvertise')
                 .setStyle(ButtonStyle.Success)
+                .setEmoji('🔗'),
+            new ButtonBuilder()
+                .setCustomId('get_key')
+                .setLabel('Clé du Jour')
+                .setStyle(ButtonStyle.Secondary)
                 .setEmoji('🔑'),
             new ButtonBuilder()
                 .setCustomId('get_script')
@@ -65,9 +87,17 @@ client.on('messageCreate', async (message) => {
 client.on('interactionCreate', async (interaction) => {
     if (!interaction.isButton()) return;
 
-    if (interaction.customId === 'get_key_link') {
+    if (interaction.customId === 'get_link') {
         await interaction.reply({
-            content: `🔑 **Voici ton lien unique pour obtenir ta clé d'accès (valable 24h) :**\n${LINKVERTISE_KEY_LINK}\n\n*Passe les étapes sur le lien pour récupérer ta clé !*`,
+            content: `🔗 **Voici ton lien Linkvertise :**\n${LINKVERTISE_URL}`,
+            flags: MessageFlags.Ephemeral
+        });
+    }
+
+    if (interaction.customId === 'get_key') {
+        const todaysKey = getDailyKey();
+        await interaction.reply({
+            content: `🔑 **Voici la clé d'aujourd'hui :** \`${todaysKey}\`\n*(Assure-toi d'avoir fait le lien Linkvertise avant !)*`,
             flags: MessageFlags.Ephemeral
         });
     }
