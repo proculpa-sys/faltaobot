@@ -2,9 +2,9 @@ const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle,
 const fs = require('fs');
 const express = require('express');
 
-// Mini-serveur web obligatoire pour que Render valide le port du Web Service
+// Serveur web indispensable pour que le Web Service gratuit de Render valide le port
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 app.get('/', (req, res) => res.send('Bot is online!'));
 app.listen(PORT, () => console.log(`Serveur web actif sur le port ${PORT}`));
 
@@ -85,7 +85,6 @@ client.on('interactionCreate', async interaction => {
         const userId = interaction.user.id;
         const db = loadDatabase();
 
-        // 1. Donner le script Lua pour copier l'HWID
         if (interaction.customId === 'get_hwid_script') {
             await interaction.reply({ 
                 content: "📋 **Voici le script pour copier ton HWID en jeu :**\n*Exécute ce code dans ton exécuteur Roblox, ton HWID sera automatiquement copié dans ton presse-papier !*\n```lua\n-- Script de récupération HWID pour Faltao Hub\nlocal hwid = gethwid() or syn and syn.request and 'Synapse_HWID' or identifyexecutor and identifyexecutor() or 'Inconnu'\nsetclipboard(tostring(hwid))\nprint('Ton HWID : ' .. tostring(hwid))\n```", 
@@ -93,7 +92,6 @@ client.on('interactionCreate', async interaction => {
             });
         }
 
-        // 2. Ouvrir la fenêtre (Modal) pour coller l'HWID
         else if (interaction.customId === 'gen_hwid_modal') {
             const modal = new ModalBuilder()
                 .setCustomId('hwid_modal_submit')
@@ -110,7 +108,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.showModal(modal);
         } 
         
-        // 3. Voir son HWID actuel
         else if (interaction.customId === 'get_my_hwid') {
             const currentHwid = db.hwids[userId];
             if (!currentHwid) {
@@ -120,7 +117,6 @@ client.on('interactionCreate', async interaction => {
             }
         }
 
-        // 4. Réinitialiser le HWID (Cooldown 24h)
         else if (interaction.customId === 'reset_hwid') {
             const now = Date.now();
             const COOLDOWN_TIME = 24 * 60 * 60 * 1000;
@@ -139,7 +135,6 @@ client.on('interactionCreate', async interaction => {
         }
     } 
     
-    // Soumission du formulaire (Modal)
     else if (interaction.isModalSubmit()) {
         if (interaction.customId === 'hwid_modal_submit') {
             const hwid = interaction.fields.getTextInputValue('hwid_input').trim();
@@ -151,11 +146,10 @@ client.on('interactionCreate', async interaction => {
 
             const db = loadDatabase();
 
-            // Sécurité anti-partage : 1 HWID unique par compte Discord
             for (let [storedUserId, storedHwid] of Object.entries(db.hwids)) {
                 if (storedHwid === hwid && storedUserId !== userId) {
                     return await interaction.reply({ content: "❌ **Erreur :** Cet HWID est déjà lié à un **autre compte Discord** !", flags: MessageFlags.Ephemeral });
-                }
+    }
             }
 
             db.hwids[userId] = hwid;
