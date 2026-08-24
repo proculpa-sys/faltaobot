@@ -24,7 +24,7 @@ function saveDatabase(data) {
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
 }
 
-// --- PARTIE SERVEUR WEB (Gère le retour de Discord, donne le rôle et affiche la clé) ---
+// --- SERVEUR WEB (Donne le rôle et la clé) ---
 app.get('/', async (req, res) => {
     const code = req.query.code;
     
@@ -64,7 +64,7 @@ app.get('/', async (req, res) => {
         const userData = await userResponse.json();
         const userId = userData.id;
 
-        // Attribution automatique du rôle sur ton serveur Discord
+        // Attribution du rôle sur ton serveur Discord
         await fetch(`https://discord.com/api/guilds/${GUILD_ID}/members/${userId}/roles/${ROLE_ID}`, {
             method: 'PUT',
             headers: { Authorization: `Bot ${process.env.TOKEN}` },
@@ -95,7 +95,7 @@ app.get('/', async (req, res) => {
 
 app.listen(PORT, () => console.log(`Serveur web actif sur le port ${PORT}`));
 
-// --- PARTIE BOT DISCORD ---
+// --- BOT DISCORD ---
 const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
@@ -117,7 +117,7 @@ client.on('messageCreate', async message => {
                 "4️⃣ Clique sur **Obtenir le script HWID** pour l'exécuter en jeu.")
             .setColor(0x5865F2);
 
-        // Bouton Linkvertise pointant directement vers ton vrai lien
+        // Bouton Linkvertise avec ton vrai lien
         const row1 = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
@@ -150,10 +150,8 @@ client.on('interactionCreate', async interaction => {
     if (!interaction.isButton()) return;
 
     if (interaction.customId === 'get_hwid_script') {
-        const oauthUrl = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=identify%20guilds.join`;
-        
         await interaction.reply({ 
-            content: `📋 **Voici le script pour ton exécuteur :**\n\`\`\`lua\n-- Script Faltao Hub HWID\nprint('Script chargé !')\n\`\`\`\n🔗 *Lien d'authentification :* ${oauthUrl}`, 
+            content: "📋 **Voici le script pour ton exécuteur :**\n```lua\n-- Script Faltao Hub HWID\nprint('Script chargé !')\n```", 
             flags: MessageFlags.Ephemeral 
         });
     }
