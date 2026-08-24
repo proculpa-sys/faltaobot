@@ -1,52 +1,160 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>Faltao Hub - Générateur de Clé</title>
-    <style>
-        body { background-color: #121212; color: white; font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .box { background: #1e1e1e; padding: 30px; border-radius: 10px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5); width: 380px; }
-        h2 { color: #9b59b6; margin-bottom: 10px; }
-        p { color: #ccc; font-size: 14px; }
-        input { width: 100%; padding: 12px; background: #2c2c2c; border: 1px solid #444; color: white; border-radius: 5px; text-align: center; font-size: 16px; margin: 15px 0; box-sizing: border-box; font-weight: bold; letter-spacing: 1px; }
-        button { background: #8e44ad; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; font-size: 15px; }
-        button:hover { background: #9b59b6; }
-    </style>
-</head>
-<body>
-    <div class="box">
-        <h2>🔑 Faltao Hub Key</h2>
-        <p>Voici ta clé du jour (Valide 24h) :</p>
-        <input type="text" id="keyInput" readonly>
-        <button onclick="copyKey()">Copier la clé</button>
-    </div>
+const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } = require('discord.js');
+const http = require('http');
 
-    <script>
-        // Fonction mathématique pour générer la clé du jour synchronisée
-        function getDailyKey() {
-            const now = new Date();
-            const year = now.getUTCFullYear();
-            const month = now.getUTCMonth() + 1;
-            const day = now.getUTCDate();
-            
-            const rawString = `FaltaoSecretKey_${year}_${month}_${day}`;
-            let hash = 0;
-            for (let i = 0; i < rawString.length; i++) {
-                hash = (hash * 31 + rawString.charCodeAt(i)) % 100000000;
-            }
-            return `faltao_${hash.toString(16).toLowerCase().padStart(8, '0')}`;
+// Serveur HTTP pour garder le bot éveillé sur Render
+const PORT = process.env.PORT || 10000;
+http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('FaltaoBot est en ligne et opérationnel !');
+}).listen(PORT, () => {
+    console.log(`Serveur Web actif sur le port ${PORT}`);
+});
+
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent
+    ]
+});
+
+const TOKEN = process.env.TOKEN;
+
+// TON LIEN LINKVERTISE FIXE
+const LINKVERTISE_URL = 'https://link-center.net/7819524/2IXzAq35ia7o';
+
+// ID de ton rôle "Accès Clé"
+const KEY_ROLE_ID = '1541487216444833792';
+
+// Fonction pour calculer la clé du jour
+function getDailyKey() {
+    const now = new Date();
+    const year = now.getUTCFullYear();
+    const month = now.getUTCMonth() + 1;
+    const day = now.getUTCDate();
+    
+    const rawString = `FaltaoSecretKey_${year}_${month}_${day}`;
+    let hash = 0;
+    for (let i = 0; i < rawString.length; i++) {
+        hash = (hash * 31 + rawString.charCodeAt(i)) % 100000000;
+    }
+    return `faltao_${hash.toString(16).toLowerCase().padStart(8, '0')}`;
+}
+
+// Planifie le reset à minuit UTC pour retirer le rôle à tout le monde
+function scheduleMidnightReset() {
+    const now = new Date();
+    const night = new Date(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() + 1,
+        0, 0, 0
+    );
+    const timeToMidnight = night.getTime() - now.getTime();
+
+    setTimeout(async () => {
+        await resetAllRoles();
+        scheduleMidnightReset();
+    }, timeToMidnight);
+}
+
+async function resetAllRoles() {
+    try {
+        const guild = client.guilds.cache.first();
+        if (!guild) return;
+        
+        await guild.members.fetch();
+        const role = guild.roles.cache.get(KEY_ROLE_ID);
+        if (!role) return;
+
+        console.log("Minuit atteint : Retrait automatique du rôle d'accès pour tout le monde...");
+        for (const member of role.members.values()) {
+            await member.roles.remove(role).catch(() => {});
+        }
+        console.log("Reset des rôles terminé !");
+    } catch (error) {
+        console.error("Erreur lors du reset des rôles :", error);
+    }
+}
+
+client.on('ready', () => {
+    console.log(`Bot connecté en tant que ${client.user.tag}`);
+    client.user.setActivity('Faltao Hub | !setup', { type: 3 });
+    scheduleMidnightReset();
+});
+
+client.on('messageCreate', async (message) => {
+    if (message.author.bot) return;
+
+    if (message.content === '!setup') {
+        if (!message.member.permissions.has('Administrator')) {
+            return message.reply({ content: "❌ Tu n'as pas les permissions nécessaires.", flags: MessageFlags.Ephemeral });
         }
 
-        // Affiche la clé dans l'input dès le chargement de la page
-        const currentKey = getDailyKey();
-        document.getElementById("keyInput").value = currentKey;
+        await message.delete().catch(() => {});
 
-        function copyKey() {
-            const input = document.getElementById("keyInput");
-            input.select();
-            navigator.clipboard.writeText(input.value);
-            alert("Clé copiée ! Tu peux la coller dans le jeu.");
+        const embed = new EmbedBuilder()
+            .setTitle('⚡ Faltao Hub — Key System')
+            .setDescription('Bienvenue sur le système de clé de **Faltao Hub**.\n\n**Comment ça marche ?**\n1️⃣ Clique sur **Lien Linkvertise** pour passer les pubs et récupérer ta clé sur le site.\n2️⃣ Demande à un admin (ou configure un bot de vérification) de t\'attribuer ton rôle d\'accès si tu veux utiliser le bouton Discord.\n3️⃣ Récupère ton script directement ici !')
+            .setColor(0x9B59B6)
+            .setFooter({ text: 'Faltao Hub • Sécurité anti-bypass' })
+            .setTimestamp();
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('get_link')
+                .setLabel('Lien Linkvertise / Clé')
+                .setStyle(ButtonStyle.Success)
+                .setEmoji('🔗'),
+            new ButtonBuilder()
+                .setCustomId('get_key')
+                .setLabel('Clé du Jour (Discord)')
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('🔑'),
+            new ButtonBuilder()
+                .setCustomId('get_script')
+                .setLabel('Obtenir le Script')
+                .setStyle(ButtonStyle.Primary)
+                .setEmoji('📜')
+        );
+
+        await message.channel.send({ embeds: [embed], components: [row] });
+    }
+});
+
+client.on('interactionCreate', async (interaction) => {
+    if (!interaction.isButton()) return;
+
+    if (interaction.customId === 'get_link') {
+        await interaction.reply({
+            content: `🔗 **Passe par ce lien Linkvertise pour accéder à ta clé du jour :**\n${LINKVERTISE_URL}`,
+            flags: MessageFlags.Ephemeral
+        });
+    }
+
+    if (interaction.customId === 'get_key') {
+        if (!interaction.member.roles.cache.has(KEY_ROLE_ID)) {
+            return interaction.reply({
+                content: `❌ **Accès refusé !** Tu n'as pas le rôle requis pour obtenir la clé par le bot.\n👉 Passe par le **Lien Linkvertise** pour récupérer ta clé directement sur le site web.`,
+                flags: MessageFlags.Ephemeral
+            });
         }
-    </script>
-</body>
-</html>
+
+        const todaysKey = getDailyKey();
+        await interaction.reply({
+            content: `🔑 **Voici ta clé du jour :** \`${todaysKey}\`\n*Bon jeu sur Faltao Hub !*`,
+            flags: MessageFlags.Ephemeral
+        });
+    }
+
+    if (interaction.customId === 'get_script') {
+        const scriptCode = `loadstring(game:HttpGet("https://raw.githubusercontent.com/proculpa-sys/faltaobot/refs/heads/main/script.lua"))()`;
+        await interaction.reply({
+            content: `📜 **Voici le script complet à coller dans ton exécuteur :**\n\`\`\`lua\n${scriptCode}\n\`\`\``,
+            flags: MessageFlags.Ephemeral
+        });
+    }
+});
+
+client.login(TOKEN);
