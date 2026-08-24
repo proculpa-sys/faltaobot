@@ -80,8 +80,8 @@ if decoded.success == true then
     Title.TextSize = 18
 
 else
-    -- Clé manquante ou expirée -> On récupère le lien de clé (.app) et on le copie
-    local keyLink = "https://platoboost.app/getkey?id=" .. ServiceID
+    -- Clé manquante ou expirée -> On copie ton lien Linkvertise dans le presse-papier
+    local keyLink = "https://link-center.net/7819524/2IXzAq35ia7o"
     
     pcall(function()
         setclipboard(keyLink)
@@ -89,7 +89,7 @@ else
 
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "Faltao Hub — Clé requise",
-        Text = "Lien de la clé copié dans le presse-papier !",
+        Text = "Lien Linkvertise copié dans le presse-papier !",
         Duration = 7
     })
     
