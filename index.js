@@ -26,7 +26,7 @@ client.on('ready', () => {
     console.log(`Bot connecté en tant que ${client.user.tag} !`);
 });
 
-// Commande !setup pour envoyer le panneau complet
+// Commande !setup pour envoyer le panneau complet avec tous les boutons
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
@@ -35,7 +35,7 @@ client.on('messageCreate', async message => {
             .setTitle("⚡ Faltao Hub — Système de Clé HWID")
             .setDescription("Comment obtenir et gérer ta clé unique (liée à ton PC) ?\n\n" +
                 "1️⃣ **Lien Linkvertise** pour passer les pubs.\n" +
-                "2️⃣ **Générer ma Clé HWID** pour enregistrer ton code.\n" +
+                "2️⃣ **Générer ma Clé HWID** pour enregistrer ton code unique.\n" +
                 "3️⃣ **Voir mon HWID** pour vérifier ton appareil actuel.\n" +
                 "4️⃣ **Reset HWID** pour changer de PC (disponible toutes les 24h).")
             .setColor(0x5865F2);
@@ -85,7 +85,7 @@ client.on('interactionCreate', async interaction => {
 
             const hwidInput = new TextInputBuilder()
                 .setCustomId('hwid_input')
-                .setLabel('Colle ton HWID ici :')
+                .setLabel('Colle ton vrai HWID :')
                 .setStyle(TextInputStyle.Short)
                 .setPlaceholder('Ex: HWID-XXXX-YYYY-ZZZZ')
                 .setRequired(true);
@@ -98,7 +98,7 @@ client.on('interactionCreate', async interaction => {
             const currentHwid = db.hwids[userId];
             if (!currentHwid) {
                 await interaction.reply({ 
-                    content: "❌ Tu n'as aucun HWID enregistré pour le moment. Clique sur **Générer ma Clé HWID** pour l'ajouter.", 
+                    content: "❌ Tu n'as aucun HWID enregistré. Clique sur **Générer ma Clé HWID** pour l'ajouter.", 
                     ephemeral: true 
                 });
             } else {
@@ -122,8 +122,11 @@ client.on('interactionCreate', async interaction => {
                 });
             } else {
                 db.cooldowns[userId] = now;
-                if (db.hwids[userId]) {
-                    delete db.hwids[userId];
+                // Supprime l'association HWID de l'utilisateur
+                for (let id in db.hwids) {
+                    if (id === userId) {
+                        delete db.hwids[id];
+                    }
                 }
                 saveDatabase(db);
 
@@ -144,15 +147,38 @@ client.on('interactionCreate', async interaction => {
     
     else if (interaction.isModalSubmit()) {
         if (interaction.customId === 'hwid_modal_submit') {
-            const hwid = interaction.fields.getTextInputValue('hwid_input');
+            const hwid = interaction.fields.getTextInputValue('hwid_input').trim();
             const userId = interaction.user.id;
             
+            // SÉCURITÉ 1 : Longueur minimale pour éviter les mots au hasard comme "salyut"
+            if (hwid.length < 10) {
+                return await interaction.reply({ 
+                    content: "❌ **HWID invalide !** Ton HWID est trop court. Assure-toi de copier le vrai code de ton exécuteur.", 
+                    ephemeral: true 
+                });
+            }
+
             const db = loadDatabase();
+
+            // SÉCURITÉ 2 : Vérifier si cet HWID est DÉJÀ utilisé par un autre compte Discord
+            for (let [storedUserId, storedHwid] of Object.entries(db.hwids)) {
+                if (storedHwid === hwid && storedUserId !== userId) {
+                    return await interaction.reply({ 
+                        content: "❌ **Erreur :** Cet HWID est déjà enregistré sur un **autre compte Discord** ! Tu ne peux pas utiliser le HWID de quelqu'un d'autre.", 
+                        ephemeral: true 
+                    });
+                }
+            }
+
+            // Enregistrement si tout est bon
             db.hwids[userId] = hwid;
             saveDatabase(db);
 
+            // Génération de la clé unique liée
+            const uniqueKey = `faltao_${userId}_${Math.random().toString(36).substring(2, 10)}`;
+
             await interaction.reply({ 
-                content: `✅ HWID enregistré avec succès !\n🔑 **Ton HWID :** \`${hwid}\``, 
+                content: `✅ **Clé générée avec succès !**\n\n🔑 **Ta clé unique :** \`${uniqueKey}\`\n💻 **HWID associé :** \`${hwid}\`\n⏳ **Validité :** 24 heures.\n\n*Garde-la précieusement, elle ne fonctionne que sur ton PC et ton compte !*`, 
                 ephemeral: true 
             });
         }
